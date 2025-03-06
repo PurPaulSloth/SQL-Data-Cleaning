@@ -47,7 +47,21 @@ This project is my first SQL data cleaning exercise, completed as part of Alex t
           `row_num` INT
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-      -- Insert data into the new
+      -- Insert data into the new table with row_num
+      INSERT INTO layoffs_staging2
+      SELECT *,
+             ROW_NUMBER() OVER (PARTITION BY company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions ORDER BY company) AS row_num
+      FROM layoffs_staging;
+
+      -- Verify duplicates in the new table
+      SELECT *
+      FROM layoffs_staging2
+      WHERE row_num > 1;
+
+      -- Delete duplicates from the new table
+      DELETE FROM layoffs_staging2
+      WHERE row_num > 1;
+    ```
 
 * **Data Standardization and Type Correction:**
     * [Describe the SQL queries used to standardize data formats and correct data types. E.g., "Used `UPDATE` statements with `CAST` and `CONVERT` functions to standardize date formats and correct data types."]
