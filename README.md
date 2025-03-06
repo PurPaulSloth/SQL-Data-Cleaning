@@ -64,24 +64,87 @@ This project is my first SQL data cleaning exercise, completed as part of Alex t
     ```
 
 * **Data Standardization and Type Correction:**
-    * [Describe the SQL queries used to standardize data formats and correct data types. E.g., "Used `UPDATE` statements with `CAST` and `CONVERT` functions to standardize date formats and correct data types."]
+    * I Performed data standardization and type correction by trimming whitespace from text fields, converting date strings to date format using `STR_TO_DATE`, altering the table structure to change the `date` column type, and standardizing capitalization and removing trailing periods from the `country` column.
     * ```sql
-        -- Example query (adapt to your specific case)
-        UPDATE table_name
-        SET date_column = STR_TO_DATE(date_column, '%m/%d/%Y')
-        WHERE date_column LIKE '%/%/%';
-        ```
-* **Missing Value Handling:**
-    * [Describe the SQL queries used to handle missing values. E.g., "Used `UPDATE` statements with `CASE` statements to replace missing values with appropriate defaults or calculated values."]
-    * ```sql
-        -- Example query (adapt to your specific case)
-        UPDATE table_name
-        SET column_name = 'Unknown'
-        WHERE column_name IS NULL;
-        ```
-* **Inconsistency Resolution:**
-    * [Describe the steps you took to resolve inconsistencies, e.g., "Used `UPDATE` and `REPLACE` to fix inconsistent naming conventions."]
+      -- Trim whitespace from company, location, and industry columns
+      UPDATE layoffs_staging2
+      SET company = TRIM(company),
+          location = TRIM(location),
+          industry = TRIM(industry);
 
+      -- Standardize 'Crypto' industry
+      UPDATE layoffs_staging2
+      SET industry = 'Crypto'
+      WHERE industry LIKE 'Crypto%';
+
+      -- Convert date strings to date format
+      UPDATE layoffs_staging2
+      SET `date` = STR_TO_DATE(`date`, '%m/%d/%Y');
+
+      -- Alter table to change date column type to DATE
+      ALTER TABLE layoffs_staging2
+      MODIFY COLUMN `date` DATE;
+
+      -- Remove trailing periods from country column
+      UPDATE layoffs_staging2
+      SET country = TRIM(TRAILING '.' FROM country);
+    ```
+    
+* **Handling Nulls and Blanks:**
+    *I Addressed null and blank values in the dataset. I Identified records with null values in both `total_laid_off` and `percentage_laid_off` columns. Standardized blank `industry` values to null. Implemented a self-join to populate missing `industry` values based on matching `company` and `country` records where available.
+    * ```sql
+      -- Identify records with null values in total_laid_off and percentage_laid_off
+      SELECT *
+      FROM layoffs_staging2
+      WHERE total_laid_off IS NULL
+      AND percentage_laid_off IS NULL;
+
+      -- Standardize blank industry values to null
+      UPDATE layoffs_staging2
+      SET industry = NULL
+      WHERE industry = '';
+
+      -- Verify null industry values
+      SELECT *
+      FROM layoffs_staging2
+      WHERE industry IS NULL
+      OR industry = '';
+
+      -- Identify records with null industry and corresponding non-null industry records
+      SELECT T1.industry, T2.industry
+      FROM layoffs_staging2 AS T1
+      JOIN layoffs_staging2 AS T2
+          ON T1.company = T2.company
+          AND T1.country = T2.country
+      WHERE (T1.industry IS NULL OR T1.industry = '')
+      AND T2.industry IS NOT NULL;
+
+      -- Populate null industry values using self-join
+      UPDATE layoffs_staging2 AS T1
+      JOIN layoffs_staging2 AS T2
+          ON T1.company = T2.company
+      SET T1.industry = T2.industry
+      WHERE T1.industry IS NULL
+      AND T2.industry IS NOT NULL;
+    ```
+* **Removing Unnecessary Columns and Rows:**
+    * Removed unnecessary rows where both `total_laid_off` and `percentage_laid_off` were null, as these records provided minimal analytical value. Also, dropped the `row_num` column, which was used for duplicate identification and was no longer needed after the cleaning process.
+    * ```sql
+      -- Identify rows with null values in total_laid_off and percentage_laid_off
+      SELECT *
+      FROM layoffs_staging2
+      WHERE total_laid_off IS NULL
+      AND percentage_laid_off IS NULL;
+
+      -- Delete rows with null values in total_laid_off and percentage_laid_off
+      DELETE FROM layoffs_staging2
+      WHERE total_laid_off IS NULL
+      AND percentage_laid_off IS NULL;
+
+      -- Remove the row_num column
+      ALTER TABLE layoffs_staging2
+      DROP COLUMN row_num;
+    ```
 ## Key Skills Demonstrated
 
 * Identifying and removing duplicate records.
@@ -89,13 +152,6 @@ This project is my first SQL data cleaning exercise, completed as part of Alex t
 * Handling missing values and inconsistencies.
 * Using SQL queries for data preprocessing.
 
-## How to Use This Project
-
-1.  Set up a MySQL database.
-2.  Run the SQL scripts located in the `scripts/` folder to create the tables.
-3.  Import the raw data into the tables.
-4.  Run the SQL cleaning scripts to process the data.
-5.  Examine the cleaned data to verify the results.
 
 ## Acknowledgments
 
