@@ -20,44 +20,35 @@ This project is my first SQL data cleaning exercise, completed as part of Alex t
 ## Cleaning Methodology
 
 * **Duplicate Handling:**
-    * [I Used a Common Table Expression (CTE) with the ROW_NUMBER() window function partitioned by key identifying columns to assign a unique row number to each record. Subsequently, duplicates were identified by filtering for row_num values greater than 1, and these duplicates were then deleted from a new staging table."]
+    * I used a Common Table Expression (CTE) with the `ROW_NUMBER()` window function partitioned by key identifying columns (company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions) to assign a unique row number to each record. Subsequently, duplicates were identified by filtering for `row_num` values greater than 1, and these duplicates were then deleted from a new staging table (`layoffs_staging2`).
     * ```sql
-        WITH duplicate_cte AS
-(Select*,
-ROW_NUMBER() OVER (PARTITION BY 
-	company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions Order by company)  AS row_num
-FROM layoffs_staging)
+      -- CTE to identify duplicates
+      WITH duplicate_cte AS (
+          SELECT *,
+                 ROW_NUMBER() OVER (PARTITION BY company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions ORDER BY company) AS row_num
+          FROM layoffs_staging
+      )
+      -- Select duplicates for verification
+      SELECT *
+      FROM duplicate_cte
+      WHERE row_num > 1;
 
-Select *
-FROM Duplicate_cte
-where row_num > 1;
+      -- Create new staging table with row_num
+      CREATE TABLE `layoffs_staging2` (
+          `company` text,
+          `location` text,
+          `industry` text,
+          `total_laid_off` int DEFAULT NULL,
+          `percentage_laid_off` text,
+          `date` text,
+          `stage` text,
+          `country` text,
+          `funds_raised_millions` int DEFAULT NULL,
+          `row_num` INT
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `layoffs_staging2` (
-  `company` text,
-  `location` text,
-  `industry` text,
-  `total_laid_off` int DEFAULT NULL,
-  `percentage_laid_off` text,
-  `date` text,
-  `stage` text,
-  `country` text,
-  `funds_raised_millions` int DEFAULT NULL,
-  `row_num` INT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+      -- Insert data into the new
 
-INSERT INTO layoffs_staging2
-Select*, ROW_NUMBER() OVER (PARTITION BY 
-	company, location, industry, total_laid_off, percentage_laid_off, `date`, stage, country, funds_raised_millions Order by company)  AS row_num
-FROM layoffs_staging;
-
-SELECT*
-FROM layoffs_staging2
-Where row_num > 1;
-
-DELETE FROM layoffs_staging2
-Where row_num > 1;
-
-        ```
 * **Data Standardization and Type Correction:**
     * [Describe the SQL queries used to standardize data formats and correct data types. E.g., "Used `UPDATE` statements with `CAST` and `CONVERT` functions to standardize date formats and correct data types."]
     * ```sql
